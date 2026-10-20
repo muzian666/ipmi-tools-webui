@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPMI Tools WebUI</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Login View -->
+    <div id="login-view" class="view">
+        <div class="login-card">
+            <div class="login-logo">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+                    <path d="M12 6v6l4 2"/>
+                </svg>
+            </div>
+            <h1>IPMI Tools</h1>
+            <p class="login-subtitle">Supermicro Fan Control & Monitor</p>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="host">BMC Host</label>
+                    <input type="text" id="host" placeholder="192.168.0.122" value="192.168.0.122" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="ADMIN" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Password" required>
+                </div>
+                <div id="login-error" class="error-msg hidden"></div>
+                <button type="submit" id="login-btn" class="btn btn-primary btn-block">Connect</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App View -->
+    <div id="app-view" class="view hidden">
+        <!-- Top Navigation Bar -->
+        <nav class="topbar">
+            <div class="topbar-left">
+                <span class="topbar-brand">IPMI Tools</span>
+                <span class="topbar-separator">|</span>
+                <span id="nav-host" class="topbar-host"></span>
+            </div>
+            <div class="topbar-tabs">
+                <button class="tab-btn active" data-tab="fan-control" onclick="switchTab('fan-control')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.2 1.8-4 4-4"/><path d="M16 12c0 2.2-1.8 4-4 4"/></svg>
+                    Fan Control
+                </button>
+                <button class="tab-btn" data-tab="monitor" onclick="switchTab('monitor')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    Monitor
+                </button>
+            </div>
+            <div class="topbar-right">
+                <button class="btn btn-ghost" onclick="disconnect()">Disconnect</button>
+            </div>
+        </nav>
+
+        <!-- Fan Control Tab -->
+        <div id="tab-fan-control" class="tab-content">
+            <div class="container">
+                <!-- Fan Mode Panel -->
+                <section class="panel">
+                    <h2 class="panel-title">Fan Mode</h2>
+                    <div class="mode-selector">
+                        <button class="mode-btn" data-mode="optimal" onclick="setMode('optimal')">
+                            <span class="mode-label">Optimal</span>
+                            <span class="mode-desc">Auto (Temp Control)</span>
+                        </button>
+                        <button class="mode-btn" data-mode="heavyio" onclick="setMode('heavyio')">
+                            <span class="mode-label">Heavy IO</span>
+                            <span class="mode-desc">6000 RPM</span>
+                        </button>
+                        <button class="mode-btn" data-mode="full" onclick="setMode('full')">
+                            <span class="mode-label">Full Speed</span>
+                            <span class="mode-desc">Manual Control</span>
+                        </button>
+                    </div>
+                    <div id="current-mode" class="mode-status">Current: <span id="mode-value">-</span></div>
+                </section>
+
+                <!-- Fan Zone Controls -->
+                <div class="zone-grid">
+                    <section class="panel zone-panel">
+                        <h2 class="panel-title">Zone 0 <small>FAN1 - FAN6</small></h2>
+                        <div class="zone-content">
+                            <div class="gauge-container">
+                                <svg class="gauge" viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"/>
+                                    <circle id="gauge-zone0" class="gauge-fill" cx="60" cy="60" r="52"
+                                        stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+                                </svg>
+                                <div class="gauge-text">
+                                    <span id="gauge-val-zone0" class="gauge-value">0%</span>
+                                </div>
+                            </div>
+                            <div class="zone-controls">
+                                <div class="slider-group">
+                                    <label>PWM Duty</label>
+                                    <input type="range" id="slider-zone0" min="0" max="100" value="0"
+                                        oninput="updateSliderLabel(0)">
+                                    <span id="slider-label-zone0" class="slider-value">0%</span>
+                                </div>
+                                <button class="btn btn-primary" onclick="applySpeed(0)">Apply</button>
+                            </div>
+                            <div class="zone-fans" id="zone0-fans"></div>
+                        </div>
+                    </section>
+
+                    <section class="panel zone-panel">
+                        <h2 class="panel-title">Zone 1 <small>FANA - FANC</small></h2>
+                        <div class="zone-content">
+                            <div class="gauge-container">
+                                <svg class="gauge" viewBox="0 0 120 120">
+                                    <circle class="gauge-bg" cx="60" cy="60" r="52"/>
+                                    <circle id="gauge-zone1" class="gauge-fill" cx="60" cy="60" r="52"
+                                        stroke-dasharray="326.73" stroke-dashoffset="326.73"/>
+                                </svg>
+                                <div class="gauge-text">
+                                    <span id="gauge-val-zone1" class="gauge-value">0%</span>
+                                </div>
+                            </div>
+                            <div class="zone-controls">
+                                <div class="slider-group">
+                                    <label>PWM Duty</label>
+                                    <input type="range" id="slider-zone1" min="0" max="100" value="0"
+                                        oninput="updateSliderLabel(1)">
+                                    <span id="slider-label-zone1" class="slider-value">0%</span>
+                                </div>
+                                <button class="btn btn-primary" onclick="applySpeed(1)">Apply</button>
+                            </div>
+                            <div class="zone-fans" id="zone1-fans"></div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Threshold Editor -->
+                <section class="panel">
+                    <h2 class="panel-title">Fan Thresholds</h2>
+                    <div id="threshold-editor" class="threshold-grid"></div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Monitor Tab -->
+        <div id="tab-monitor" class="tab-content hidden">
+            <div class="container monitor-container">
+                <div class="monitor-header">
+                    <div class="monitor-info">
+                        <span id="monitor-host"></span>
+                        <span class="monitor-separator">|</span>
+                        <span id="monitor-refresh-time">Last update: -</span>
+                    </div>
+                    <div class="monitor-status-dot" id="monitor-status-dot"></div>
+                </div>
+
+                <!-- Temperature Section -->
+                <div class="monitor-section">
+                    <h3 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                        Temperature
+                    </h3>
+                    <div id="monitor-temp" class="card-grid"></div>
+                </div>
+
+                <!-- Fan Section -->
+                <div class="monitor-section">
+                    <h3 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7-7h6m6 0h6"/><path d="M4.22 4.22l4.24 4.24m7.08 7.08l4.24 4.24M4.22 19.78l4.24-4.24m7.08-7.08l4.24-4.24"/></svg>
+                        Fans
+                    </h3>
+                    <div id="monitor-fans" class="card-grid"></div>
+                </div>
+
+                <!-- Voltage Section -->
+                <div class="monitor-section">
+                    <h3 class="section-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Voltage &amp; Power
+                    </h3>
+                    <div id="monitor-voltage" class="card-grid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-msg"></span>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

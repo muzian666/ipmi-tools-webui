@@ -1,0 +1,16 @@
+# Local tool config
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store

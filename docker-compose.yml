@@ -1,0 +1,9 @@
+services:
+  ipmi-webui:
+    build: .
+    container_name: ipmi-tools-webui
+    ports:
+      - "8080:8080"
+    environment:
+      - SECRET_KEY=change-me-to-something-random
+    restart: unless-stopped
